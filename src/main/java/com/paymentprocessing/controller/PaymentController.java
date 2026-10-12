@@ -2,8 +2,8 @@ package com.paymentprocessing.controller;
 
 import java.util.List;
 
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,19 +24,26 @@ public class PaymentController {
 	private final PaymentService paymentService;
 
 	@PostMapping("/transfer")
-	public TransactionResponse transferMoney(@RequestBody TransferRequest request) {
+	public TransactionResponse transferMoney(Authentication authentication, @RequestBody TransferRequest request) {
 
-		return paymentService.transferMoney(request);
+		String email = authentication.getName();
+
+		return paymentService.transferMoney(email, request);
 	}
 
-	@GetMapping("/history/{accountNumber}")
-	public List<TransactionHistoryResponse> getHistory(@PathVariable("accountNumber") String accountNumber) {
+	@GetMapping("/history")
+	public List<TransactionHistoryResponse> getHistory(Authentication authentication) {
 
-		return paymentService.getTransactionHistory(accountNumber);
+		String email = authentication.getName();
+
+		return paymentService.getTransactionHistory(email);
 	}
 
-	@GetMapping("/mini-statement/{accountNumber}")
-	public List<TransactionHistoryResponse> getMiniStatement(@PathVariable("accountNumber") String accountNumber) {
-		return paymentService.getMiniStatement(accountNumber);
+	@GetMapping("/mini-statement")
+	public List<TransactionHistoryResponse> getMiniStatement(Authentication authentication) {
+
+		String email = authentication.getName();
+
+		return paymentService.getMiniStatement(email);
 	}
 }

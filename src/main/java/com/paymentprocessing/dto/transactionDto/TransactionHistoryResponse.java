@@ -14,7 +14,11 @@ public class TransactionHistoryResponse {
 
 	private String senderAccount;
 
+	private String senderName;
+
 	private String receiverAccount;
+
+	private String receiverName;
 
 	private BigDecimal amount;
 

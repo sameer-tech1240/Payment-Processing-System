@@ -12,11 +12,13 @@ import com.paymentprocessing.dto.accountDto.CreateAccountRequest;
 import com.paymentprocessing.dto.profileDto.UpdatePasswordRequest;
 import com.paymentprocessing.dto.profileDto.UpdateProfileRequest;
 import com.paymentprocessing.entity.BankAccount;
+import com.paymentprocessing.entity.Kyc;
 import com.paymentprocessing.entity.User;
 import com.paymentprocessing.enums.AccountStatus;
+import com.paymentprocessing.enums.KycStatus;
 import com.paymentprocessing.repository.BankAccountRepository;
+import com.paymentprocessing.repository.KycRepository;
 import com.paymentprocessing.repository.UserRepository;
-import com.paymentprocessing.util.JwtUtil;
 
 import lombok.RequiredArgsConstructor;
 
@@ -25,28 +27,23 @@ import lombok.RequiredArgsConstructor;
 public class AccountService {
 
 	private final UserRepository userRepository;
-
 	private final BankAccountRepository bankAccountRepository;
-
 	private final PasswordEncoder passwordEncoder;
+	private final KycRepository kycRepository;
 
-	private final JwtUtil jwtUtil;
+	public AccountResponse createAccount(String email, CreateAccountRequest request) {
 
-	public AccountResponse createAccount(CreateAccountRequest request) {
-		User user = userRepository.findByEmail(request.getEmail())
-				.orElseThrow(() -> new RuntimeException("User not found"));
+		User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
+
+		Kyc kyc = kycRepository.findByUser(user).orElseThrow(() -> new RuntimeException("KYC not submitted"));
+
+		if (kyc.getStatus() != KycStatus.APPROVED) {
+			throw new RuntimeException("Bank account can be created only after KYC approval");
+		}
 
 		if (user.getBankAccount() != null) {
 			throw new RuntimeException("Account already exists");
-
 		}
-
-		String accountNumber = generateAccountNumber();
-
-		BankAccount bankAccount = BankAccount.builder().accountNumber(accountNumber).ifscCode("SBIN0001234")
-				.balance(request.getInitialBalance()).accountType(request.getAccountType())
-				.nomineeName(request.getNomineeName()).mobileNumber(request.getMobileNumber())
-				.accountStatus(AccountStatus.ACTIVE).user(user).build();
 
 		if (request.getMobileNumber() == null || request.getMobileNumber().length() != 10) {
 
@@ -69,6 +66,14 @@ public class AccountService {
 
 			throw new RuntimeException("Minimum balance for Current Account is ₹5000");
 		}
+
+		String accountNumber = generateAccountNumber();
+
+		BankAccount bankAccount = BankAccount.builder().accountNumber(accountNumber).ifscCode("SBIN0001234")
+				.balance(request.getInitialBalance()).accountType(request.getAccountType())
+				.nomineeName(request.getNomineeName()).mobileNumber(request.getMobileNumber())
+				.accountStatus(AccountStatus.ACTIVE).user(user).build();
+
 		bankAccountRepository.save(bankAccount);
 
 		return AccountResponse.builder().accountNumber(accountNumber).ifscCode("SBIN0001234").accountStatus("ACTIVE")
@@ -87,62 +92,67 @@ public class AccountService {
 		BankAccount account = bankAccountRepository.findByAccountNumber(accountNumber)
 				.orElseThrow(() -> new RuntimeException("Account not found"));
 
-		return AccountDetailsResponse.builder().fullName(account.getUser().getFullName())
-				.email(account.getUser().getEmail()).accountNumber(account.getAccountNumber())
-				.ifscCode(account.getIfscCode()).balance(account.getBalance())
+		return AccountDetailsResponse.builder().hasAccount(true).userId(account.getUser().getId())
+				.fullName(account.getUser().getFullName()).email(account.getUser().getEmail())
+				.accountNumber(account.getAccountNumber()).ifscCode(account.getIfscCode()).balance(account.getBalance())
 				.accountStatus(account.getAccountStatus().name()).mobileNumber(account.getMobileNumber())
 				.nomineeName(account.getNomineeName()).build();
 	}
 
-	public AccountDetailsResponse getLoggedInUserAccount(String token) {
-
-		String email = jwtUtil.extractEmail(token);
+	public AccountDetailsResponse getLoggedInUserAccount(String email) {
 
 		User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
 
 		if (user.getBankAccount() == null) {
-			System.out.println("hasAccount TRUE response");
+
 			return AccountDetailsResponse.builder().hasAccount(false).userId(user.getId()).fullName(user.getFullName())
 					.email(user.getEmail()).build();
 		}
 
 		BankAccount account = user.getBankAccount();
-		AccountDetailsResponse response = AccountDetailsResponse.builder().hasAccount(true).userId(user.getId())
-				.fullName(user.getFullName()).email(user.getEmail()).accountNumber(account.getAccountNumber())
-				.ifscCode(account.getIfscCode()).balance(account.getBalance())
-				.accountStatus(account.getAccountStatus().name()).mobileNumber(account.getMobileNumber())
-				.nomineeName(account.getNomineeName()).build();
 
-		System.out.println("HAS ACCOUNT = " + response.getHasAccount());
-
-		return response;
+		return AccountDetailsResponse.builder().hasAccount(true).userId(user.getId()).fullName(user.getFullName())
+				.email(user.getEmail()).accountNumber(account.getAccountNumber()).ifscCode(account.getIfscCode())
+				.balance(account.getBalance()).accountStatus(account.getAccountStatus().name())
+				.mobileNumber(account.getMobileNumber()).nomineeName(account.getNomineeName()).build();
 	}
 
-	public void updateProfile(String token, UpdateProfileRequest request) {
+	public void updateProfile(String email, UpdateProfileRequest request) {
 
-		String email = jwtUtil.extractEmail(token);
 		User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
+
 		BankAccount account = user.getBankAccount();
+
+		if (account == null) {
+			throw new RuntimeException("Bank account not found");
+		}
+
 		account.setMobileNumber(request.getMobileNumber());
 		account.setNomineeName(request.getNomineeName());
+
 		bankAccountRepository.save(account);
 	}
 
-	public void changePassword(String token, UpdatePasswordRequest request) {
+	public void changePassword(String email, UpdatePasswordRequest request) {
 
-		String email = jwtUtil.extractEmail(token);
 		User user = userRepository.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
+
 		if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+
 			throw new RuntimeException("Current Password Incorrect");
 		}
+
 		if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+
 			throw new RuntimeException("Passwords do not match");
 		}
+
 		if (request.getNewPassword().length() < 6) {
 			throw new RuntimeException("Password must be at least 6 characters");
 		}
+
 		user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+
 		userRepository.save(user);
 	}
-
 }

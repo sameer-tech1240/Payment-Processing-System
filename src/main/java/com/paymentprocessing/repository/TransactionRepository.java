@@ -2,12 +2,14 @@ package com.paymentprocessing.repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import com.paymentprocessing.entity.Transaction;
+import com.paymentprocessing.enums.TransactionStatus;
 
 public interface TransactionRepository extends JpaRepository<Transaction, Long> {
 
@@ -22,6 +24,8 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 	List<Transaction> findBySenderAccountAndCreatedAtBetween(String senderAccount, LocalDateTime start,
 			LocalDateTime end);
 
+	List<Transaction> findByStatusOrderByCreatedAtDesc(TransactionStatus status);
+
 	@Query("""
 			SELECT t
 			FROM Transaction t
@@ -34,4 +38,6 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 			""")
 	List<Transaction> getStatementTransactions(@Param("account") String account,
 			@Param("fromDate") LocalDateTime fromDate, @Param("toDate") LocalDateTime toDate);
+
+	Optional<Transaction> findByTransactionId(String transactionId);
 }

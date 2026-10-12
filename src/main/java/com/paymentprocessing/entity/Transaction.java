@@ -51,6 +51,12 @@ public class Transaction {
 
 	private String remarks;
 
+	private String reviewedBy;
+
+	private LocalDateTime reviewedAt;
+
+	private String reviewRemarks;
+	
 	private LocalDateTime createdAt;
 
 	@PrePersist

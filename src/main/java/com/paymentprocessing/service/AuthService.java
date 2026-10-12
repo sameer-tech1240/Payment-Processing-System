@@ -28,8 +28,7 @@ public class AuthService {
 
 		if (userRepository.findByEmail(request.getEmail()).isPresent()) {
 
-		    throw new RuntimeException(
-		            "Email already exists");
+			throw new RuntimeException("Email already exists");
 		}
 
 		User user = User.builder().fullName(request.getFullName()).email(request.getEmail())
@@ -45,9 +44,7 @@ public class AuthService {
 	public AuthResponse login(LoginRequest request) {
 
 		User user = userRepository.findByEmail(request.getEmail())
-				.orElseThrow(() ->
-		        new RuntimeException(
-		                "Invalid Email"));
+				.orElseThrow(() -> new RuntimeException("Invalid Email"));
 
 		if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
 
@@ -56,8 +53,7 @@ public class AuthService {
 			throw new RuntimeException("Invalid Password");
 		}
 
-		String token = jwtUtil.generateToken(user.getEmail());
-
+		String token = jwtUtil.generateToken(user.getEmail(), user.getRole());
 		auditLogService.saveAuditLog(user.getEmail(), "LOGIN", "SUCCESS", "User logged in successfully");
 
 		return new AuthResponse(token, "Login Successful");

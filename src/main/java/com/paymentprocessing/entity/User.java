@@ -39,6 +39,9 @@ public class User {
 
 	@OneToOne(mappedBy = "user")
 	private BankAccount bankAccount;
+	
+	@OneToOne(mappedBy = "user")
+	private Kyc kyc;
 
 	private LocalDateTime createdAt;
 

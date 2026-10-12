@@ -14,29 +14,32 @@ public class FraudDetectionService {
 	public String validateTransfer(BankAccount sender, BankAccount receiver, TransferRequest request,
 			boolean dailyLimitExceeded) {
 
-		if (sender.getAccountNumber().equals(receiver.getAccountNumber())) {
+		if (receiver.getAccountStatus() != AccountStatus.ACTIVE) {
+			return "Receiver account is not active";
+		}
 
+		if (sender.getAccountNumber().equals(receiver.getAccountNumber())) {
 			return "Self transfer not allowed";
 		}
 
 		if (sender.getAccountStatus() != AccountStatus.ACTIVE) {
-
-			return "Sender account is blocked";
+			return "Sender account is not active";
 		}
 
-		if (dailyLimitExceeded) {
-
-			return "Daily transaction limit exceeded";
-		}
-
-		if (request.getAmount().compareTo(BigDecimal.valueOf(100000)) > 0) {
-
-			return "Transaction flagged as suspicious";
+		if (request.getAmount() == null || request.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
+			return "Invalid transfer amount";
 		}
 
 		if (sender.getBalance().compareTo(request.getAmount()) < 0) {
-
 			return "Insufficient balance";
+		}
+
+		if (request.getAmount().compareTo(BigDecimal.valueOf(200000)) > 0) {
+			return "Transaction flagged as suspicious";
+		}
+
+		if (dailyLimitExceeded) {
+			return "Daily transaction limit exceeded";
 		}
 
 		return null;

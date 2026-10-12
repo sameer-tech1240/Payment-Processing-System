@@ -1,11 +1,11 @@
 package com.paymentprocessing.controller;
 
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -26,9 +26,11 @@ public class AccountController {
 	private final AccountService accountService;
 
 	@PostMapping("/create")
-	public AccountResponse createAccount(@RequestBody CreateAccountRequest request) {
+	public AccountResponse createAccount(Authentication authentication, @RequestBody CreateAccountRequest request) {
 
-		return accountService.createAccount(request);
+		String email = authentication.getName();
+
+		return accountService.createAccount(email, request);
 	}
 
 	@GetMapping("/details/{accountNumber}")
@@ -38,29 +40,30 @@ public class AccountController {
 	}
 
 	@GetMapping("/me")
-	public AccountDetailsResponse getMyAccount(
+	public AccountDetailsResponse getMyAccount(Authentication authentication) {
 
-			@RequestHeader("Authorization") String authHeader) {
+		String email = authentication.getName();
 
-		String token = authHeader.replace("Bearer ", "");
-
-		return accountService.getLoggedInUserAccount(token);
+		return accountService.getLoggedInUserAccount(email);
 	}
 
 	@PutMapping("/profile")
-	public String updateProfile(@RequestHeader("Authorization") String authHeader,
-			@RequestBody UpdateProfileRequest request) {
+	public String updateProfile(Authentication authentication, @RequestBody UpdateProfileRequest request) {
 
-		String token = authHeader.replace("Bearer ", "");
-		accountService.updateProfile(token, request);
+		String email = authentication.getName();
+
+		accountService.updateProfile(email, request);
+
 		return "Profile Updated Successfully";
 	}
 
 	@PostMapping("/change-password")
-	public String changePassword(@RequestHeader("Authorization") String authHeader,
-			@RequestBody UpdatePasswordRequest request) {
-		String token = authHeader.replace("Bearer ", "");
-		accountService.changePassword(token, request);
+	public String changePassword(Authentication authentication, @RequestBody UpdatePasswordRequest request) {
+
+		String email = authentication.getName();
+
+		accountService.changePassword(email, request);
+
 		return "Password Updated Successfully";
 	}
 }
